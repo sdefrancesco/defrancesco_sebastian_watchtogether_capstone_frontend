@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import './App.css';
-import { Container, Form, Row, Col, ListGroup, Navbar, Nav, Button } from 'react-bootstrap';
+import { Container, Form, Row, Col, ListGroup, Navbar, Nav, Button, Card } from 'react-bootstrap';
 import axios from 'axios';
 
 function App() {
@@ -89,32 +89,35 @@ function App() {
               allow="encrypted-media"
               allowFullScreen
             ></iframe>
-            <h6>Up Next</h6>
-            <h6>Queue</h6>
-            <Row>
-              {videoData.map((video, index) => (
-                <Col key={index} md={4} className='mb-4'>
-                  <div className="card bg-body-tertiary shadow-lg">
-                    <div className="card-body">
-                      <img
-                        src={video.thumbnails.default.url}
-                        alt={video.title}
-                        style={{ width: '50px', height: 'auto', marginRight: '10px' }}
-                      />
-                      {video.title}<br/>
-                      <h6>{video.channelTitle}</h6>
-
-                    </div>
-                  </div>
-                </Col>
-              ))}
-
-            </Row>
           </Col>
           <Col md={3}>
               <h6>Comments</h6>
           </Col>
         </Row>
+            <h6>Up Next</h6>
+            <h6>Queue</h6>
+            <Row className='g-2'>
+              {videoData.map((video, index) => (
+                <Col key={index} md={4} className=''>
+                  <div className="card bg-body-tertiary shadow-lg">
+                    <Row className='g-0'>
+                      <Col md={4}>
+                        <Card.Img variant="top" src={video.thumbnails.maxres.url} className='img-fluid rounded-start'/>
+                      </Col>
+                    <Col md={8}>
+                      <div className="card-body">
+                        <h6 className='mb-0 p-0'>
+                          {video.title}
+                        </h6>
+                        <small>{video.channelTitle}</small>
+                      </div>
+                    </Col>
+                    </Row>
+                  </div>
+                </Col>
+              ))}
+
+            </Row>
       </Container>
       
     </>
