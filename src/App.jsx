@@ -48,32 +48,23 @@ function App() {
     const getVideoData = async () => {
       const data = await Promise.all(videoLinks.map(link => fetchVideoData(link)));
       setVideoData(data);
-    };
 
+    };
+    
     getVideoData();
   }, [videoLinks]);
-
+  
   return (
     <>
-    <Navbar bg="dark" variant="dark">
-      <Container>
-        <Navbar.Brand href="#home">
-              <h4 style={{ letterSpacing: '-2px' }} className=''>watchtogether</h4>
-        </Navbar.Brand>
-        <Nav className="me-auto">
-          <Nav.Link href="#home">Home</Nav.Link>
-          <Nav.Link href="#features">Features</Nav.Link>
-          <Nav.Link href="#pricing">Pricing</Nav.Link>
-        </Nav>
-      </Container>
-    </Navbar>
       <div className="bg-dark bg-gradient border-bottom shadow-lg">
         <Container>
           <div className='text-center p-4'>
-            <h5 className='display-6 fs-5 text-body-secondary'>Paste a link from YouTube</h5>
-            <Form className='mt-4'>
+              <h1 style={{ letterSpacing: '-3px' }} className=''>watchtogether</h1>
+            <h5 className='fs-5 text-body-secondary lead mb-4'>A place where you can watch any type of youtube video, together!</h5>
+            <Form className='mt-5'>
               <Form.Control type="text" placeholder="Paste your YouTube link here!" className='rounded-5' />
             </Form>
+            <Button className='rounded-5 px-5 mt-3'>Add Link To Queue</Button>
           </div>
         </Container>
       </div>
@@ -89,11 +80,6 @@ function App() {
               allow="encrypted-media"
               allowFullScreen
             ></iframe>
-          </Col>
-          <Col md={3}>
-              <h6>Comments</h6>
-          </Col>
-        </Row>
             <h6>Up Next</h6>
             <h6>Queue</h6>
             <Row className='g-2'>
@@ -118,6 +104,11 @@ function App() {
               ))}
 
             </Row>
+          </Col>
+          <Col md={3}>
+              <h6>Comments</h6>
+          </Col>
+        </Row>
       </Container>
       
     </>
