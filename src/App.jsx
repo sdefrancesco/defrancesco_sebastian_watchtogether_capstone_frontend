@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import './App.css';
 import { Container, Form, Row, Col, ListGroup, Navbar, Nav, Button, Card } from 'react-bootstrap';
 import axios from 'axios';
+import { toast ,ToastContainer} from 'react-toastify'
 
 function App() {
   const [videoLinks, setVideoLinks] = useState([
@@ -48,7 +49,7 @@ function App() {
     const getVideoData = async () => {
       const data = await Promise.all(videoLinks.map(link => fetchVideoData(link)));
       setVideoData(data);
-
+      toast('Links Added', {theme: 'dark'})
     };
     
     getVideoData();
@@ -56,6 +57,7 @@ function App() {
   
   return (
     <>
+      <ToastContainer />
       <div className="bg-dark bg-gradient border-bottom shadow-lg">
         <Container>
           <div className='text-center p-4'>
