@@ -7,8 +7,14 @@ import { toast ,ToastContainer} from 'react-toastify'
 function App() {
   const [videoLinks, setVideoLinks] = useState([]);
 
+  const [currentVideoId, setCurrentVideoId] = useState('')
+
+
   const [videoData, setVideoData] = useState([]);
   const [newLink, setNewLink] = useState('')
+
+  const [comments, setComments] = useState([]);
+  const [commentText, setCommentText] = useState('');
 
   const apiKey = 'AIzaSyC2VT90TYxe-1d4o1E7FXm9xi--6VuMwZA';
 
@@ -45,7 +51,7 @@ function App() {
       const response = await axios.post('http://localhost:3000/api/links/new', { link: newLink });
       console.log(response.data);
       getAllLinks();
-      toast.success('Link added!', { theme: 'dark' });
+      toast.success('Link added to queue', { theme: 'dark' });
     } catch (err) {
       console.log(err);
       toast.error('Error adding link', { theme: 'dark' });
@@ -61,6 +67,47 @@ function App() {
       console.log(err)
     }
   }
+
+  const handleDeleteLink = async (id) => {
+    try {
+      await axios.delete(`http://localhost:3000/api/links/${id}`);
+      toast.info('Link removed from queue.', { theme: 'dark' });
+      getAllLinks(); // refresh the list
+    } catch (err) {
+      console.error(err);
+      toast.error('Error deleting link', { theme: 'dark' });
+    }
+  };
+
+  const fetchComments = async (linkId) => {
+    try {
+      const res = await axios.get(`http://localhost:3000/api/comments/${linkId}`);
+      setComments(res.data);
+    } catch (err) {
+      console.error(err);
+      toast.error('Failed to load comments', { theme: 'dark' });
+    }
+  };
+  
+  const addComment = async (e) => {
+    e.preventDefault();
+    if (!commentText.trim()) return;
+  
+    try {
+      const res = await axios.post('http://localhost:3000/api/comments', {
+        text: commentText,
+        linkId: videoLinks.find(link => new URL(link.link).searchParams.get("v") === currentVideoId)?._id,
+        author: "Anonymous", 
+      });
+  
+      setCommentText('');
+      fetchComments(videoLinks.find(link => new URL(link.link).searchParams.get("v") === currentVideoId)?._id);
+      toast.success('Comment added!', { theme: 'dark' });
+    } catch (err) {
+      console.error(err);
+      toast.error('Failed to add comment', { theme: 'dark' });
+    }
+  };
 
   useEffect(() => {
     getAllLinks()
@@ -96,51 +143,107 @@ function App() {
       <Container>
         <Row>
           <Col md={9}>
-            <iframe
-              width="100%"
-              height="400"
-              src="https://www.youtube.com/watch?v=2PuFyjAs7JA"
-              frameBorder="0"
-              allow="encrypted-media"
-              allowFullScreen
-            ></iframe>
+            <Form>
+              <h6>Video Parameters</h6>
+          <div className="p-2 border bg-body-tertiary shadow-lg rounded mb-2 d-flex align-items-center justify-content-between">
+              <Form.Check
+                type="switch"
+                id="autoplay-switch"
+                label="Autoplay"
+                size='sm'
+              />
+              <Form.Check
+                type="switch"
+                id="fullscreen-switch"
+                label="Full Screen"
+              />
+              <Form.Check
+                type="switch"
+                id="comments-switch"
+                label="Comments"
+              />
+          </div>
+            </Form>
+          <iframe
+  width="100%"
+  height="400"
+  src={`https://www.youtube.com/embed/${currentVideoId}`}
+  frameBorder="0"
+  allow="autoplay; encrypted-media"
+  allowFullScreen
+></iframe>
             <h6>Up Next</h6>
             <h6>Queue ({videoLinks.length})</h6>
             <Row className='g-2'>
-              {videoData.map((video, index) => (
-                <Col key={index} md={4} className=''>
-                  <div className="card bg-body-tertiary shadow-lg">
-                    <div className="card-header d-flex justify-content-between">
-                     <small>Added By </small>
-                     <i className="bi bi-x-lg"></i>
-                    </div>
-                    <Row className='g-0'>
-                      <Col md={4}>
-                        <Card.Img variant="top" src={video.thumbnails.maxres.url} className='img-fluid rounded-start'/>
-                      </Col>
-                    <Col md={8}>
-                      <div className="card-body">
-                        <h6 className='mb-0 p-0'>
-                          {video.title}
-                        </h6>
-                        <small className='text-body-secondary'>{video.channelTitle}</small>
+              {videoLinks.map((link, index) => {
+                const video = videoData[index];
+                if (!video) return null;
+                  return (
+                    <Col key={link._id} md={4}>
+                      <div className="card bg-body-tertiary shadow-lg">
+                        <div className="card-header d-flex justify-content-between">
+                          <small>Added By</small>
+                          <i className="bi bi-x-lg" onClick={() => handleDeleteLink(link._id)} style={{ cursor: 'pointer' }}></i>
+                        </div>
+                        <Row className='g-0'>
+                          <Col md={4}>
+                            <Card.Img variant="top" src={video.thumbnails?.maxres?.url || video.thumbnails?.default?.url} className='img-fluid rounded-start' />
+                          </Col>
+                          <Col md={8}>
+                            <div className="card-body">
+                              <h6 className='mb-0 p-0'>{video.title}</h6>
+                              <small className='text-body-secondary'>{video.channelTitle}</small>
+                            </div>
+                          </Col>
+                        </Row>
+                        <div className="card-footer">
+                        <Button size='sm' onClick={() => {
+                          const videoId = new URL(link.link).searchParams.get("v");
+                          setCurrentVideoId(videoId);
+                          fetchComments(link._id);
+                        }}>
+                          <i className="bi bi-play-fill me-2"></i>
+                          Play Next 
+                          </Button>
+                        </div>
                       </div>
                     </Col>
-                    </Row>
-                    <div className="card-footer">
-                      <Button size='sm'>
-                        <i className="bi bi-play-fill me-1"></i>
-                        Play Next</Button>
-                      
-                    </div>
-                  </div>
-                </Col>
-              ))}
-
+                  );
+                })}
             </Row>
           </Col>
           <Col md={3}>
               <h6>Comments</h6>
+              <div id="comments">
+                  <div style={{maxHeight: '600px', overflowY: 'scroll'}}>
+                    {comments.map(comment => (
+                      <>
+                        <small className='fw-bold'>{comment.author || 'Anonymous'}</small>
+                      <div key={comment._id} className="bg-body-tertiary rounded-3 px-3 py-1 mb-2">
+                        <p className='mb-1'>{comment.text}</p>
+                        <small style={{fontSize: '.7rem'}} className='text-muted'>{new Date(comment.createdAt).toLocaleString()}</small>
+                      </div>
+                      </>
+                    ))}
+
+                  </div>
+                  <hr />
+              <div className="new-comment  my-3">
+                <h6 className='small'>Add A Comment</h6>
+                <Form onSubmit={addComment}>
+                  <Form.Control
+                    size='sm'
+                    as='textarea'
+                    value={commentText}
+                    placeholder="What's your thoughts on this video?"
+                    onChange={(e) => setCommentText(e.target.value)}
+                  />
+                  <Button type='submit' size='sm' className='mt-2'>Submit</Button>
+                </Form>
+
+              </div>
+              </div>
+                
           </Col>
         </Row>
       </Container>
