@@ -3,6 +3,7 @@ import './App.css';
 import { Container, Form, Row, Col, ListGroup, Navbar, Nav, Button, Card } from 'react-bootstrap';
 import axios from 'axios';
 import { toast ,ToastContainer} from 'react-toastify'
+import { motion, AnimatePresence } from 'framer-motion'
 
 function App() {
   const [videoLinks, setVideoLinks] = useState([]);
@@ -145,7 +146,7 @@ function App() {
           <Col md={9}>
             <Form>
               <h6>Video Parameters</h6>
-          <div className="p-2 border bg-body-tertiary shadow-lg rounded mb-2 d-flex align-items-center justify-content-between">
+          <div className="px-4 py-2 border bg-body-tertiary shadow-lg rounded mb-2 d-flex align-items-center justify-content-between">
               <Form.Check
                 type="switch"
                 id="autoplay-switch"
@@ -164,79 +165,113 @@ function App() {
               />
           </div>
             </Form>
-          <iframe
-  width="100%"
-  height="400"
-  src={`https://www.youtube.com/embed/${currentVideoId}`}
-  frameBorder="0"
-  allow="autoplay; encrypted-media"
-  allowFullScreen
-></iframe>
+            {currentVideoId? (
+            <iframe
+              width="100%"
+              height="400"
+              src={`https://www.youtube.com/embed/${currentVideoId}`}
+              frameBorder="0"
+              allow="autoplay; encrypted-media"
+              allowFullScreen
+          ></iframe>
+
+            ): (
+              <div className="p-5 text-center border bg-body-tertiary mb-3 rounded shadow-lg">No Video Set Yet</div>
+            )}
             <h6>Up Next</h6>
             <h6>Queue ({videoLinks.length})</h6>
             <Row className='g-2'>
-              {videoLinks.map((link, index) => {
-                const video = videoData[index];
-                if (!video) return null;
-                  return (
-                    <Col key={link._id} md={4}>
-                      <div className="card bg-body-tertiary shadow-lg">
-                        <div className="card-header d-flex justify-content-between">
-                          <small>Added By</small>
-                          <i className="bi bi-x-lg" onClick={() => handleDeleteLink(link._id)} style={{ cursor: 'pointer' }}></i>
-                        </div>
-                        <Row className='g-0'>
-                          <Col md={4}>
-                            <Card.Img variant="top" src={video.thumbnails?.maxres?.url || video.thumbnails?.default?.url} className='img-fluid rounded-start' />
-                          </Col>
-                          <Col md={8}>
-                            <div className="card-body">
-                              <h6 className='mb-0 p-0'>{video.title}</h6>
-                              <small className='text-body-secondary'>{video.channelTitle}</small>
-                            </div>
-                          </Col>
-                        </Row>
-                        <div className="card-footer">
-                        <Button size='sm' onClick={() => {
-                          const videoId = new URL(link.link).searchParams.get("v");
-                          setCurrentVideoId(videoId);
-                          fetchComments(link._id);
-                        }}>
-                          <i className="bi bi-play-fill me-2"></i>
-                          Play Next 
-                          </Button>
-                        </div>
-                      </div>
-                    </Col>
-                  );
-                })}
+            <AnimatePresence>
+    {videoLinks.map((link, index) => {
+      const video = videoData[index];
+      if (!video) return null;
+
+      return (
+        <Col key={link._id} md={4}>
+          <motion.div
+            layout
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            transition={{ duration: 0.3 }}
+            className="card bg-body-tertiary shadow-lg"
+          >
+            <div className="card-header d-flex justify-content-between">
+              <small>Added By</small>
+              <i
+                className="bi bi-x-lg"
+                onClick={() => handleDeleteLink(link._id)}
+                style={{ cursor: 'pointer' }}
+              ></i>
+            </div>
+            <Row className='g-0'>
+              <Col md={4}>
+                <Card.Img
+                  variant="top"
+                  src={video.thumbnails?.maxres?.url || video.thumbnails?.default?.url}
+                  className='img-fluid rounded-start'
+                />
+              </Col>
+              <Col md={8}>
+                <div className="card-body">
+                  <h6 className='mb-0 p-0'>{video.localized.title}</h6>
+                  <small className='text-body-secondary'>{video.channelTitle}</small>
+                </div>
+              </Col>
+            </Row>
+            <div className="card-footer">
+              <Button
+                size='sm'
+                onClick={() => {
+                  const videoId = new URL(link.link).searchParams.get("v");
+                  setCurrentVideoId(videoId);
+                  fetchComments(link._id);
+                }}
+              >
+                <i className="bi bi-play-fill me-2"></i>
+                Play Next
+              </Button>
+            </div>
+          </motion.div>
+        </Col>
+      );
+    })}
+  </AnimatePresence>
             </Row>
           </Col>
           <Col md={3}>
-              <h6>Comments</h6>
-              <div id="comments">
-                  <div style={{maxHeight: '600px', overflowY: 'scroll'}}>
-                    {comments.map(comment => (
-                      <>
-                        <small className='fw-bold'>{comment.author || 'Anonymous'}</small>
-                      <div key={comment._id} className="bg-body-tertiary rounded-3 px-3 py-1 mb-2">
+          <h6>Comments {comments.length > 0 && `(${comments.length})`}</h6>
+              <div id="comments" className='bg-dark rounded border shadow-lg'>
+                  <div style={{maxHeight: '600px', overflowY: 'scroll', minHeight: '500px'}} className='p-3'>
+                  {comments.length === 0 ? (
+                    <div>No Comments Yet</div>
+                  ) : (
+                    comments.map(comment => (
+                      <div key={comment._id} className="bg-body-tertiary border rounded px-3 py-2 mb-2 shadow-lg">
+                        <small className='fw-bold' style={{ fontSize: '.7rem' }}>
+                          {comment.author || 'Anonymous'}
+                        </small>
                         <p className='mb-1'>{comment.text}</p>
-                        <small style={{fontSize: '.7rem'}} className='text-muted'>{new Date(comment.createdAt).toLocaleString()}</small>
+                        <small style={{ fontSize: '.7rem' }} className='text-muted'>
+                          {new Date(comment.createdAt).toLocaleString()}
+                        </small>
                       </div>
-                      </>
-                    ))}
+                    ))
+                  )}
+
 
                   </div>
-                  <hr />
-              <div className="new-comment  my-3">
+              <div className="new-comment  mt-3 p-3 border-top bg-body-tertiary">
                 <h6 className='small'>Add A Comment</h6>
                 <Form onSubmit={addComment}>
                   <Form.Control
                     size='sm'
                     as='textarea'
                     value={commentText}
-                    placeholder="What's your thoughts on this video?"
+                    placeholder="Thoughts on this video?"
+                    className='rounded px-3 bg-body-tertiary'
                     onChange={(e) => setCommentText(e.target.value)}
+                    rows='3'
                   />
                   <Button type='submit' size='sm' className='mt-2'>Submit</Button>
                 </Form>
