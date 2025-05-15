@@ -1,9 +1,13 @@
 import { useState, useEffect } from 'react';
 import './App.css';
-import { Container, Form, Row, Col, ListGroup, Navbar, Nav, Button, Card } from 'react-bootstrap';
+import { Container, Form, Row, Col, ListGroup, Navbar, Nav, Button, Card, Modal } from 'react-bootstrap';
 import axios from 'axios';
 import { toast ,ToastContainer} from 'react-toastify'
 import { motion, AnimatePresence } from 'framer-motion'
+import YouTube from 'react-youtube';
+import { io } from 'socket.io-client'
+
+const socket = io('http://localhost:3000')
 
 function App() {
   const [videoLinks, setVideoLinks] = useState([]);
@@ -16,6 +20,10 @@ function App() {
 
   const [comments, setComments] = useState([]);
   const [commentText, setCommentText] = useState('');
+
+  const [showUserModal, setShowUserModal] = useState(true);
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
 
   const apiKey = 'AIzaSyC2VT90TYxe-1d4o1E7FXm9xi--6VuMwZA';
 
@@ -110,8 +118,25 @@ function App() {
     }
   };
 
+  const handleUserSubmit = (e) => {
+    e.preventDefault();
+    if (firstName.trim() && lastName.trim()) {
+      setShowUserModal(false);
+      toast.success(`Welcome, ${firstName} ${lastName}!`, { theme: 'dark' });
+      socket.emit('userJoined', { firstName, lastName });
+    } else {
+      toast.error('Please enter both first and last name.', { theme: 'dark' });
+    }
+  };
+
   useEffect(() => {
     getAllLinks()
+
+    socket.on('newUserJoined', ({ firstName, lastName }) => {
+      toast.info(`${firstName} ${lastName} joined the room`, { theme: 'dark' });
+    });
+  
+    return () => socket.off('newUserJoined');
   }, [])
   
   useEffect(() => {
@@ -121,9 +146,16 @@ function App() {
     };
   
     if (videoLinks.length > 0) {
-      getVideoData(); // fetch video details only after links are loaded
+      getVideoData();
+  
+      // Set default video
+      if (!currentVideoId) {
+        const firstVideoId = new URL(videoLinks[0].link).searchParams.get("v");
+        setCurrentVideoId(firstVideoId);
+        fetchComments(videoLinks[0]._id);
+      }
     }
-  }, [videoLinks]); // run every time videoLinks updates
+  }, [videoLinks]);
   
   return (
     <>
@@ -166,19 +198,74 @@ function App() {
           </div>
             </Form>
             {currentVideoId? (
-            <iframe
-              width="100%"
-              height="400"
-              src={`https://www.youtube.com/embed/${currentVideoId}`}
-              frameBorder="0"
-              allow="autoplay; encrypted-media"
-              allowFullScreen
-          ></iframe>
+              <YouTube
+  videoId={currentVideoId}
+  opts={{
+    width: '100%',
+    height: '400',
+    playerVars: {
+      autoplay: 0,
+    },
+  }}
+  onEnd={() => {
+    const currentIndex = videoLinks.findIndex(link => new URL(link.link).searchParams.get("v") === currentVideoId);
+    const next = videoLinks[currentIndex + 1];
+    if (next) {
+      const nextId = new URL(next.link).searchParams.get("v");
+      setCurrentVideoId(nextId);
+      fetchComments(next._id);
+    }
+  }}
+/>
 
             ): (
               <div className="p-5 text-center border bg-body-tertiary mb-3 rounded shadow-lg">No Video Set Yet</div>
             )}
-            <h6>Up Next</h6>
+            {currentVideoId && (() => {
+  const currentIndex = videoLinks.findIndex(link => {
+    const videoId = new URL(link.link).searchParams.get("v");
+    return videoId === currentVideoId;
+  });
+  const nextVideo = videoLinks[currentIndex + 1];
+  const nextVideoData = videoData[currentIndex + 1];
+
+  if (nextVideo && nextVideoData) {
+    return (
+      <>
+        <h6 className='mt-2'>Up Next</h6>
+        <Card className="mb-3 shadow-lg bg-body-tertiary">
+          <Row className="g-0">
+            <Col md={4}>
+              <Card.Img
+                src={nextVideoData.thumbnails?.maxres?.url || nextVideoData.thumbnails?.default?.url}
+                className='img-fluid rounded-start'
+              />
+            </Col>
+            <Col md={8}>
+              <Card.Body>
+                <Card.Title style={{ fontSize: '1rem' }}>{nextVideoData.localized.title}</Card.Title>
+                <Card.Text>
+                  <small className="text-muted">{nextVideoData.channelTitle}</small>
+                </Card.Text>
+                <Button
+                  size="sm"
+                  onClick={() => {
+                    const nextId = new URL(nextVideo.link).searchParams.get("v");
+                    setCurrentVideoId(nextId);
+                    fetchComments(nextVideo._id);
+                  }}
+                >
+                  <i className="bi bi-play-fill me-2"></i>Play Now
+                </Button>
+              </Card.Body>
+            </Col>
+          </Row>
+        </Card>
+      </>
+    );
+  }
+  return null;
+})()}
             <h6>Queue ({videoLinks.length})</h6>
             <Row className='g-2'>
             <AnimatePresence>
@@ -261,7 +348,7 @@ function App() {
 
 
                   </div>
-              <div className="new-comment  mt-3 p-3 border-top bg-body-tertiary">
+              <div className="new-comment  p-3 border-top bg-body-tertiary">
                 <h6 className='small'>Add A Comment</h6>
                 <Form onSubmit={addComment}>
                   <Form.Control
@@ -282,6 +369,39 @@ function App() {
           </Col>
         </Row>
       </Container>
+
+      <Modal show={showUserModal} backdrop="static" centered>
+  <Modal.Header>
+    <Modal.Title>Welcome to WatchTogether</Modal.Title>
+  </Modal.Header>
+  <Modal.Body>
+    <Form onSubmit={handleUserSubmit}>
+      <Form.Group className="mb-3">
+        <Form.Label>First Name</Form.Label>
+        <Form.Control
+          type="text"
+          value={firstName}
+          onChange={(e) => setFirstName(e.target.value)}
+          placeholder="Enter first name"
+          required
+        />
+      </Form.Group>
+      <Form.Group className="mb-3">
+        <Form.Label>Last Name</Form.Label>
+        <Form.Control
+          type="text"
+          value={lastName}
+          onChange={(e) => setLastName(e.target.value)}
+          placeholder="Enter last name"
+          required
+        />
+      </Form.Group>
+      <Button variant="primary" type="submit">
+        Enter Room
+      </Button>
+    </Form>
+  </Modal.Body>
+</Modal>
       
     </>
   );
