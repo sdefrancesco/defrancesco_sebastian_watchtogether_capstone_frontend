@@ -192,21 +192,31 @@ const Home = () => {
   };
 
   useEffect(() => {
-
-    getAllLinks()
-    const storedUser = localStorage.getItem('watchTogetherUser');
-    if (storedUser) {
-      const { firstName, lastName } = JSON.parse(storedUser);
-      setFirstName(firstName);
-      setLastName(lastName);
-      setShowUserModal(false);
+    getAllLinks();
   
-      socket.on('connect', () => {
-        socket.emit('userJoined', { firstName, lastName });
-      });
+    // Check for existing user
+    let storedUser = localStorage.getItem('watchTogetherUser');
+  
+    if (!storedUser) {
+      // If no user is stored, generate a random one
+      const randomUser = {
+        firstName: `User${Math.floor(Math.random() * 10000)}`,
+        lastName: ''
+      };
+      localStorage.setItem('watchTogetherUser', JSON.stringify(randomUser));
+      storedUser = JSON.stringify(randomUser);
     }
   
-    // Listen for other users joining
+    // Parse and use stored user
+    const { firstName, lastName } = JSON.parse(storedUser);
+    setFirstName(firstName);
+    setLastName(lastName);
+    setShowUserModal(false);
+  
+    socket.on('connect', () => {
+      socket.emit('userJoined', { firstName, lastName });
+    });
+  
     socket.on('newUserJoined', (user) => {
       toast.info(`${user.firstName} ${user.lastName} has joined the room.`, { theme: 'dark' });
     });
@@ -216,7 +226,6 @@ const Home = () => {
       socket.off('connect');
     };
   }, []);
-
   
   useEffect(() => {
     const getVideoData = async () => {
