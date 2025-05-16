@@ -1,12 +1,28 @@
-# React + Vite
+# 🎥 WatchTogether
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Watch YouTube videos together in real-time, comment, and chat — no matter where you are. Built with the MERN stack and powered by Socket.IO for a synchronized experience.
 
-Currently, two official plugins are available:
+## Features
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+-  Add and share YouTube video links
+-  Watch videos together in sync
+-  Real-time comments with Socket.IO
+-  User identification via local storage
+-  RESTful API with Express and MongoDB
+-  Clean UI with React, Bootstrap, and Framer Motion
 
-## Expanding the ESLint configuration
+##  Demo
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+> [Live Demo Frontend]((https://watchtogether.up.railway.app/)
+> [Backend Demo API](sebastiand-capstone.up.railway.app)
+> [Backend Git Repository](https://github.com/sdefrancesco/defrancesco_sebastian_watchtogether_capstone_backend)
+
+
+## Tech Stack
+
+- **Frontend:** React, React-Bootstrap, Framer Motion, Axios
+- **Backend:** Node.js, Express.js, MongoDB, Mongoose
+- **Realtime:** Socket.IO
+- **Deployment:** Railway 
+
+
