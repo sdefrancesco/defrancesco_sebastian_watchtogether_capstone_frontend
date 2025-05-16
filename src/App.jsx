@@ -7,7 +7,9 @@ import { motion, AnimatePresence } from 'framer-motion'
 import YouTube from 'react-youtube';
 import { io } from 'socket.io-client'
 
-const socket = io('http://localhost:3000')
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
+
+const socket = io(`${BACKEND_URL}`)
 
 function App() {
   const [videoLinks, setVideoLinks] = useState([]);
@@ -57,7 +59,7 @@ function App() {
 
   const handleNewLink = async () => {
     try {
-      const response = await axios.post('http://localhost:3000/api/links/new', { link: newLink });
+      const response = await axios.post(`${BACKEND_URL}/api/links/new`, { link: newLink });
       console.log(response.data);
       getAllLinks();
       toast.success('Link added to queue', { theme: 'dark' });
@@ -69,7 +71,7 @@ function App() {
 
   const getAllLinks = async()=> {
     try {
-      let response = await axios.get(`http://localhost:3000/api/links`)
+      let response = await axios.get(`${BACKEND_URL}/api/links`)
       setVideoLinks(response.data)
       console.log(response.data)
     } catch(err) {
@@ -79,7 +81,7 @@ function App() {
 
   const handleDeleteLink = async (id) => {
     try {
-      await axios.delete(`http://localhost:3000/api/links/${id}`);
+      await axios.delete(`${BACKEND_URL}/api/links/${id}`);
       toast.info('Link removed from queue.', { theme: 'dark' });
       getAllLinks(); // refresh the list
     } catch (err) {
@@ -90,7 +92,7 @@ function App() {
 
   const fetchComments = async (linkId) => {
     try {
-      const res = await axios.get(`http://localhost:3000/api/comments/${linkId}`);
+      const res = await axios.get(`${BACKEND_URL}/api/comments/${linkId}`);
       setComments(res.data);
     } catch (err) {
       console.error(err);
@@ -103,15 +105,21 @@ function App() {
     if (!commentText.trim()) return;
   
     try {
-      const res = await axios.post('http://localhost:3000/api/comments', {
+      const storedUser = JSON.parse(localStorage.getItem('watchTogetherUser'));
+      const author = storedUser ? `${storedUser.firstName} ${storedUser.lastName}` : 'Anonymous';
+  
+      const res = await axios.post(`${BACKEND_URL}/api/comments`, {
         text: commentText,
         linkId: videoLinks.find(link => new URL(link.link).searchParams.get("v") === currentVideoId)?._id,
-        author: "Anonymous", 
+        author,
       });
   
       setCommentText('');
       fetchComments(videoLinks.find(link => new URL(link.link).searchParams.get("v") === currentVideoId)?._id);
       toast.success('Comment added!', { theme: 'dark' });
+      socket.emit('newComment', {
+        linkId: videoLinks.find(link => new URL(link.link).searchParams.get("v") === currentVideoId)?._id
+      });
     } catch (err) {
       console.error(err);
       toast.error('Failed to add comment', { theme: 'dark' });
@@ -121,23 +129,42 @@ function App() {
   const handleUserSubmit = (e) => {
     e.preventDefault();
     if (firstName.trim() && lastName.trim()) {
+      const userData = { firstName, lastName };
+      localStorage.setItem('watchTogetherUser', JSON.stringify(userData))
       setShowUserModal(false);
       toast.success(`Welcome, ${firstName} ${lastName}!`, { theme: 'dark' });
-      socket.emit('userJoined', { firstName, lastName });
+      socket.emit('userJoined', userData);
     } else {
       toast.error('Please enter both first and last name.', { theme: 'dark' });
     }
   };
 
   useEffect(() => {
-    getAllLinks()
 
-    socket.on('newUserJoined', ({ firstName, lastName }) => {
-      toast.info(`${firstName} ${lastName} joined the room`, { theme: 'dark' });
+    getAllLinks()
+    const storedUser = localStorage.getItem('watchTogetherUser');
+    if (storedUser) {
+      const { firstName, lastName } = JSON.parse(storedUser);
+      setFirstName(firstName);
+      setLastName(lastName);
+      setShowUserModal(false);
+  
+      socket.on('connect', () => {
+        socket.emit('userJoined', { firstName, lastName });
+      });
+    }
+  
+    // Listen for other users joining
+    socket.on('newUserJoined', (user) => {
+      toast.info(`${user.firstName} ${user.lastName} has joined the room.`, { theme: 'dark' });
     });
   
-    return () => socket.off('newUserJoined');
-  }, [])
+    return () => {
+      socket.off('newUserJoined');
+      socket.off('connect');
+    };
+  }, []);
+
   
   useEffect(() => {
     const getVideoData = async () => {
@@ -155,6 +182,16 @@ function App() {
         fetchComments(videoLinks[0]._id);
       }
     }
+
+    socket.on('newComment', ({ linkId }) => {
+      const currentLinkId = videoLinks.find(link => new URL(link.link).searchParams.get("v") === currentVideoId)?._id;
+      if (linkId === currentLinkId) {
+        fetchComments(linkId);
+      }
+    });
+    return () => {
+      socket.off('newComment'); // clean up
+    };
   }, [videoLinks]);
   
   return (
@@ -199,24 +236,24 @@ function App() {
             </Form>
             {currentVideoId? (
               <YouTube
-  videoId={currentVideoId}
-  opts={{
-    width: '100%',
-    height: '400',
-    playerVars: {
-      autoplay: 0,
-    },
-  }}
-  onEnd={() => {
-    const currentIndex = videoLinks.findIndex(link => new URL(link.link).searchParams.get("v") === currentVideoId);
-    const next = videoLinks[currentIndex + 1];
-    if (next) {
-      const nextId = new URL(next.link).searchParams.get("v");
-      setCurrentVideoId(nextId);
-      fetchComments(next._id);
-    }
-  }}
-/>
+                videoId={currentVideoId}
+                opts={{
+                  width: '100%',
+                  height: '400',
+                  playerVars: {
+                    autoplay: 0,
+                  },
+                }}
+                onEnd={() => {
+                  const currentIndex = videoLinks.findIndex(link => new URL(link.link).searchParams.get("v") === currentVideoId);
+                  const next = videoLinks[currentIndex + 1];
+                  if (next) {
+                    const nextId = new URL(next.link).searchParams.get("v");
+                    setCurrentVideoId(nextId);
+                    fetchComments(next._id);
+                  }
+                }}
+              />
 
             ): (
               <div className="p-5 text-center border bg-body-tertiary mb-3 rounded shadow-lg">No Video Set Yet</div>
